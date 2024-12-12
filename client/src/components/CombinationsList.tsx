@@ -35,24 +35,26 @@ export function CombinationsList({ combinations }: CombinationsListProps) {
           </div>
 
           <div className="space-y-2">
-            {combination.status === 'processing' && (
-              <p className="text-sm text-muted-foreground">
-                Video will be available at: {combination.downloadUrl}
-              </p>
-            )}
+            <p className="text-sm text-muted-foreground">
+              Video URL: <a href={combination.downloadUrl} className="underline hover:text-primary" target="_blank" rel="noopener noreferrer">{combination.downloadUrl}</a>
+            </p>
             
             <Button
               className="w-full"
               onClick={() => window.open(combination.downloadUrl)}
-              disabled={combination.status === 'processing'}
             >
-              {combination.status === 'processing' ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <Download className="w-4 h-4 mr-2" />
+              <Download className="w-4 h-4 mr-2" />
+              Open Video
+              {combination.status === 'processing' && (
+                <Loader2 className="w-4 h-4 ml-2 animate-spin" />
               )}
-              {combination.status === 'processing' ? 'Processing...' : 'Download'}
             </Button>
+
+            {combination.status === 'processing' && (
+              <p className="text-sm text-muted-foreground">
+                Processing... The video will be available soon.
+              </p>
+            )}
 
             {combination.status === 'error' && (
               <p className="text-sm text-destructive mt-2">
