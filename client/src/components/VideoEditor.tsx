@@ -179,10 +179,10 @@ export function VideoEditor({ segment, onClose, onSave }: VideoEditorProps) {
         <div 
           className="relative"
           style={{ 
-            height: '90vh',
-            width: 'calc(90vh * 9/16)',
+            width: '405px', // 9:16 ratio based on 720px height
+            height: '720px',
             maxWidth: '100%',
-            aspectRatio: '9/16'
+            margin: '0 auto'
           }}
         >
           <video

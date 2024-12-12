@@ -38,10 +38,9 @@ export function VideoPreview({ segment, onRemove }: VideoPreviewProps) {
       <div 
         className="relative mx-auto" 
         style={{ 
+          width: '180px', // 9:16 ratio based on 320px height
           height: '320px',
-          width: 'calc(320px * 9/16)',
           maxWidth: '100%',
-          aspectRatio: '9/16',
           backgroundColor: 'black'
         }}
       >

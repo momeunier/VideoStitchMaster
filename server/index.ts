@@ -81,44 +81,45 @@ app.use((req, res, next) => {
   // ALWAYS serve the app on port 5000
   // this serves both the API and the client
   const PORT = 5000;
+  let serverInstance = server;
   
-  // Add proper error handling and cleanup
-  const startServer = () => {
-    try {
-      const httpServer = server.listen(PORT, "0.0.0.0", () => {
-        log(`serving on port ${PORT}`);
+  // Cleanup function to ensure proper shutdown
+  const cleanup = () => {
+    log('Shutting down server...');
+    if (serverInstance) {
+      serverInstance.close(() => {
+        log('Server closed');
+        process.exit(0);
       });
 
-      // Handle server errors
-      httpServer.on('error', (error: any) => {
-        if (error.code === 'EADDRINUSE') {
-          log(`Port ${PORT} is already in use. Retrying in 3 seconds...`);
-          setTimeout(() => {
-            httpServer.close();
-            startServer();
-          }, 3000);
-        } else {
-          console.error('Server error:', error);
-          process.exit(1);
-        }
-      });
-
-      // Cleanup on process termination
-      const cleanup = () => {
-        log('Shutting down server...');
-        httpServer.close(() => {
-          log('Server closed');
-          process.exit(0);
-        });
-      };
-
-      process.on('SIGTERM', cleanup);
-      process.on('SIGINT', cleanup);
-    } catch (error) {
-      console.error('Failed to start server:', error);
-      process.exit(1);
+      // Force close after 3 seconds if graceful shutdown fails
+      setTimeout(() => {
+        log('Force closing server...');
+        process.exit(1);
+      }, 3000);
+    } else {
+      process.exit(0);
     }
   };
 
-  startServer();
+  // Register cleanup handlers
+  process.on('SIGTERM', cleanup);
+  process.on('SIGINT', cleanup);
+  process.on('uncaughtException', (err) => {
+    console.error('Uncaught Exception:', err);
+    cleanup();
+  });
+
+  // Start the server
+  serverInstance.listen(PORT, "0.0.0.0", () => {
+    log(`serving on port ${PORT}`);
+  }).on('error', (error: any) => {
+    if (error.code === 'EADDRINUSE') {
+      console.error(`Port ${PORT} is already in use`);
+      cleanup();
+    } else {
+      console.error('Server error:', error);
+      cleanup();
+    }
+  });
 })();
