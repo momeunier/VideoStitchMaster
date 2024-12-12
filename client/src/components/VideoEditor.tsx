@@ -39,11 +39,20 @@ export function VideoEditor({ segment, onClose, onSave }: VideoEditorProps) {
     const context = canvas.getContext('2d');
     if (!context) return;
 
-    const render = () => {
+    // Wait for video metadata to load to get correct dimensions
+    const handleVideoLoad = () => {
+      console.log('Video dimensions:', video.videoWidth, 'x', video.videoHeight);
       // Match canvas size to video dimensions
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
+    };
+    
+    video.addEventListener('loadedmetadata', handleVideoLoad);
+    if (video.readyState >= 2) {
+      handleVideoLoad();
+    }
 
+    const render = () => {
       // Clear canvas
       context.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -166,14 +175,15 @@ export function VideoEditor({ segment, onClose, onSave }: VideoEditorProps) {
 
   return (
     <Card className="p-4 space-y-4 max-w-4xl mx-auto">
-      <div className="relative bg-black">
+      <div className="relative bg-black max-h-[80vh] overflow-hidden">
         <video
           ref={videoRef}
-          className="w-full h-auto mx-auto"
-          style={{ aspectRatio: '9/16' }}
+          className="w-auto h-full mx-auto"
+          style={{ maxHeight: '80vh' }}
           src={segment.previewUrl}
           controls
           muted
+          playsInline
         />
         <canvas
           ref={canvasRef}
