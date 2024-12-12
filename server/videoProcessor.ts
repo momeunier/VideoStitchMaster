@@ -49,46 +49,69 @@ export async function processVideoCombination({ inputFiles, outputPath }: Proces
     ];
 
     console.log(`[FFmpeg] Executing command: ffmpeg ${ffmpegArgs.join(' ')}`);
+    console.log(`[FFmpeg] Starting process with ${inputFiles.length} input files`);
     const ffmpeg = spawn('ffmpeg', ffmpegArgs);
+    let progressRegex = /time=(\d{2}:\d{2}:\d{2}.\d{2})/;
+    let lastProgressUpdate = Date.now();
 
     ffmpeg.stderr.on('data', (data) => {
       const output = data.toString();
       stdErrOutput += output;
-      process.stdout.write(`[FFmpeg Processing] ${output}`);
+      
+      // Extract progress information
+      const match = progressRegex.exec(output);
+      if (match) {
+        const currentTime = Date.now();
+        // Only log progress every second to avoid spam
+        if (currentTime - lastProgressUpdate > 1000) {
+          console.log(`[FFmpeg] Processing progress: ${match[1]}`);
+          lastProgressUpdate = currentTime;
+        }
+      } else {
+        // Log non-progress messages for debugging
+        console.log(`[FFmpeg Processing] ${output}`);
+      }
     });
 
     ffmpeg.stdout.on('data', (data) => {
       const output = data.toString();
-      process.stdout.write(`[FFmpeg Output] ${output}`);
+      console.log(`[FFmpeg Output] ${output}`);
     });
 
     ffmpeg.on('error', (err) => {
       console.error('[FFmpeg Error]', err);
+      ffmpeg.kill('SIGKILL');
       reject(new Error(`FFmpeg process error: ${err.message}`));
     });
 
     // Set a timeout of 5 minutes
     const timeout = setTimeout(() => {
-      ffmpeg.kill();
+      console.log('[FFmpeg] Process timed out, killing...');
+      ffmpeg.kill('SIGKILL');
       reject(new Error('FFmpeg process timed out after 5 minutes'));
     }, 5 * 60 * 1000);
 
-    ffmpeg.on('close', (code) => {
+    ffmpeg.on('close', async (code) => {
       clearTimeout(timeout);
+      console.log(`[FFmpeg] Process closed with code: ${code}`);
+      
       if (code === 0) {
-        // Verify the output file exists and has content
-        fs.stat(outputPath, (err, stats) => {
-          if (err) {
-            console.error('[FFmpeg] Error checking output file:', err);
-            reject(new Error(`Failed to verify output file: ${err.message}`));
-          } else if (stats.size === 0) {
+        try {
+          // Verify the output file exists and has content
+          const stats = await fs.promises.stat(outputPath);
+          if (stats.size === 0) {
             console.error('[FFmpeg] Output file is empty');
             reject(new Error('FFmpeg generated an empty output file'));
           } else {
             console.log(`[FFmpeg] Successfully processed video combination (${stats.size} bytes)`);
+            // Add a small delay to ensure file system has completely written the file
+            await new Promise(resolve => setTimeout(resolve, 500));
             resolve(outputPath);
           }
-        });
+        } catch (err) {
+          console.error('[FFmpeg] Error checking output file:', err);
+          reject(new Error(`Failed to verify output file: ${err.message}`));
+        }
       } else {
         console.error('[FFmpeg] Process failed with code:', code);
         console.error('[FFmpeg] Error output:', stdErrOutput);
