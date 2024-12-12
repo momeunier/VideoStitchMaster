@@ -81,6 +81,8 @@ export function registerRoutes(app: Express): Server {
       return res.status(400).json({ message: 'Missing required segments' });
     }
 
+    console.log('[Combinations] Starting generation process');
+    
     for (const hook of hooks) {
       for (const story of stories) {
         for (const cta of ctas) {
@@ -93,26 +95,37 @@ export function registerRoutes(app: Express): Server {
           };
 
           combinations.push(combination);
+          console.log(`[Combinations] Created combination ${combination.id}`);
 
           processingQueue.add(async () => {
             try {
+              console.log(`[Combinations] Processing combination ${combination.id}`);
               const outputPath = path.join('public', 'combinations', `${combination.id}.mp4`);
+              
+              const selectedSegments = [
+                segments.find(s => s.id === hook.id)!,
+                segments.find(s => s.id === story.id)!,
+                segments.find(s => s.id === cta.id)!
+              ];
+              
               await processVideoCombination({
-                inputFiles: [hook.file, story.file, cta.file],
+                inputFiles: selectedSegments.map(s => s.file),
                 outputPath,
               });
 
               combination.status = 'ready';
               combination.downloadUrl = `/combinations/${path.basename(outputPath)}`;
+              console.log(`[Combinations] Successfully processed combination ${combination.id}`);
             } catch (error) {
+              console.error(`[Combinations] Error processing combination ${combination.id}:`, error);
               combination.status = 'error';
-              console.error('Combination processing error:', error);
             }
           });
         }
       }
     }
 
+    console.log('[Combinations] Added all combinations to processing queue');
     res.json(combinations);
   });
 
