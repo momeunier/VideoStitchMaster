@@ -34,21 +34,32 @@ export function CombinationsList({ combinations }: CombinationsListProps) {
             </p>
           </div>
 
-          {combination.status === 'ready' && combination.downloadUrl && (
+          <div className="space-y-2">
+            {combination.status === 'processing' && (
+              <p className="text-sm text-muted-foreground">
+                Video will be available at: {combination.downloadUrl}
+              </p>
+            )}
+            
             <Button
               className="w-full"
               onClick={() => window.open(combination.downloadUrl)}
+              disabled={combination.status === 'processing'}
             >
-              <Download className="w-4 h-4 mr-2" />
-              Download
+              {combination.status === 'processing' ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Download className="w-4 h-4 mr-2" />
+              )}
+              {combination.status === 'processing' ? 'Processing...' : 'Download'}
             </Button>
-          )}
 
-          {combination.status === 'error' && (
-            <p className="text-sm text-destructive">
-              Failed to process combination
-            </p>
-          )}
+            {combination.status === 'error' && (
+              <p className="text-sm text-destructive mt-2">
+                Failed to process combination. You can try refreshing to check the status again.
+              </p>
+            )}
+          </div>
         </Card>
       ))}
     </div>

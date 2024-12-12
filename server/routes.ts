@@ -86,12 +86,14 @@ export function registerRoutes(app: Express): Server {
     for (const hook of hooks) {
       for (const story of stories) {
         for (const cta of ctas) {
+          const combinationId = randomUUID();
           const combination: VideoCombination = {
-            id: randomUUID(),
+            id: combinationId,
             hook: hook.id,
             story: story.id,
             cta: cta.id,
             status: 'processing',
+            downloadUrl: `/combinations/${combinationId}.mp4`,
           };
 
           combinations.push(combination);

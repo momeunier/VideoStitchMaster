@@ -11,7 +11,7 @@ export interface VideoCombination {
   story: string;
   cta: string;
   status: 'processing' | 'ready' | 'error';
-  downloadUrl?: string;
+  downloadUrl: string;
 }
 
 export interface UploadProgressEvent {
