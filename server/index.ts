@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { createServer, type Server } from "http";
 
 const app = express();
 app.use(express.json());
@@ -28,6 +29,7 @@ app.use((req, res, next) => {
   next();
 });
 
+// Request logging middleware
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
@@ -58,80 +60,104 @@ app.use((req, res, next) => {
   next();
 });
 
-(async () => {
-  let serverInstance: Server | null = null;
+async function startServer(): Promise<Server> {
+  let serverInstance = registerRoutes(app);
 
-  // Cleanup function to ensure proper shutdown
-  const cleanup = () => {
-    log('Shutting down server...');
-    if (serverInstance) {
-      serverInstance.close(() => {
-        log('Server closed');
-        process.exit(0);
+  // Error handling middleware
+  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+    const status = err.status || err.statusCode || 500;
+    const message = err.message || "Internal Server Error";
+    res.status(status).json({ message });
+    console.error('Error middleware:', err);
+  });
+
+  // Setup Vite or static serving
+  if (app.get("env") === "development") {
+    await setupVite(app, serverInstance);
+  } else {
+    serveStatic(app);
+  }
+
+  return new Promise((resolve, reject) => {
+    const PORT = 5000;
+    
+    serverInstance.listen(PORT, "0.0.0.0", () => {
+      log(`Server started successfully on port ${PORT}`);
+      resolve(serverInstance);
+    }).on('error', (error: any) => {
+      console.error('Server startup error:', error);
+      reject(error);
+    });
+  });
+}
+
+async function main() {
+  let server: Server | null = null;
+  let retries = 0;
+  const MAX_RETRIES = 3;
+
+  // Cleanup function
+  const cleanup = async () => {
+    if (server) {
+      return new Promise<void>((resolve) => {
+        console.log('Initiating server shutdown...');
+        server!.close(() => {
+          console.log('Server closed successfully');
+          resolve();
+        });
+
+        // Force close after timeout
+        setTimeout(() => {
+          console.log('Force closing server after timeout');
+          resolve();
+        }, 3000);
       });
-
-      // Force close after 3 seconds if graceful shutdown fails
-      setTimeout(() => {
-        log('Force closing server...');
-        process.exit(1);
-      }, 3000);
-    } else {
-      process.exit(0);
     }
   };
 
-  // Handle unhandled rejections
-  process.on('unhandledRejection', (reason, promise) => {
-    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-    cleanup();
-  });
-
-  // Handle uncaught exceptions
-  process.on('uncaughtException', (err) => {
-    console.error('Uncaught Exception:', err);
-    cleanup();
-  });
-
   // Register cleanup handlers
-  process.on('SIGTERM', cleanup);
-  process.on('SIGINT', cleanup);
+  const handleShutdown = async () => {
+    console.log('Shutdown signal received');
+    await cleanup();
+    process.exit(0);
+  };
 
-  try {
-    // Register routes and create server instance
-    serverInstance = registerRoutes(app);
+  process.on('SIGTERM', handleShutdown);
+  process.on('SIGINT', handleShutdown);
+  process.on('uncaughtException', async (err) => {
+    console.error('Uncaught Exception:', err);
+    await cleanup();
+    process.exit(1);
+  });
+  process.on('unhandledRejection', async (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+    await cleanup();
+    process.exit(1);
+  });
 
-    // Error handling middleware
-    app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-      const status = err.status || err.statusCode || 500;
-      const message = err.message || "Internal Server Error";
-      res.status(status).json({ message });
-      console.error('Error middleware:', err);
-    });
-
-    // Setup Vite or static serving
-    if (app.get("env") === "development") {
-      await setupVite(app, serverInstance);
-    } else {
-      serveStatic(app);
-    }
-
-    // ALWAYS serve the app on port 5000
-    const PORT = 5000;
-    
-    // Start the server
-    serverInstance.listen(PORT, "0.0.0.0", () => {
-      log(`serving on port ${PORT}`);
-    }).on('error', (error: any) => {
+  while (retries < MAX_RETRIES) {
+    try {
+      console.log(`Starting server (attempt ${retries + 1}/${MAX_RETRIES})...`);
+      server = await startServer();
+      break;
+    } catch (error: any) {
       if (error.code === 'EADDRINUSE') {
-        console.error(`Port ${PORT} is already in use`);
-        cleanup();
+        console.error(`Port 5000 is in use, waiting before retry...`);
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        retries++;
+        if (retries === MAX_RETRIES) {
+          console.error('Max retries reached, exiting...');
+          process.exit(1);
+        }
       } else {
-        console.error('Server error:', error);
-        cleanup();
+        console.error('Fatal server error:', error);
+        process.exit(1);
       }
-    });
-  } catch (error) {
-    console.error('Failed to start server:', error);
-    cleanup();
+    }
   }
-})();
+}
+
+main().catch(async (error) => {
+  console.error('Fatal application error:', error);
+  process.exit(1);
+});
