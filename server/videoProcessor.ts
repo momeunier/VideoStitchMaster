@@ -46,7 +46,7 @@ export async function processVideoCombination({ inputFiles, outputPath }: Proces
 
 export async function generateThumbnail(videoPath: string): Promise<string> {
   const thumbnailPath = path.join(
-    path.dirname(videoPath),
+    'public/thumbnails',
     `${randomUUID()}.jpg`
   );
 

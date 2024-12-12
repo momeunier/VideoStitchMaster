@@ -60,7 +60,7 @@ export function registerRoutes(app: Express): Server {
         id: randomUUID(),
         file: req.file.path,
         type: req.body.type,
-        previewUrl: `/thumbnails/${path.basename(thumbnail)}`,
+        previewUrl: `/uploads/${path.basename(req.file.path)}`,
       };
 
       console.log(`[Upload] Created segment with preview URL: ${segment.previewUrl}`);
