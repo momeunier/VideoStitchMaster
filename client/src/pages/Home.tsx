@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { VideoDropZone } from '@/components/VideoDropZone';
 import { VideoPreview } from '@/components/VideoPreview';
 import { CombinationsList } from '@/components/CombinationsList';
 import { Button } from '@/components/ui/button';
-import { VideoSegment } from '@/lib/types';
+import { VideoSegment, VideoType, VideoCombination } from '@/lib/types';
 import { generateCombinations, getCombinations } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { Wand2 } from 'lucide-react';
@@ -19,10 +19,32 @@ export function Home() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: combinations = [] } = useQuery({
+  const combinationsQuery = useQuery({
     queryKey: ['combinations'],
     queryFn: getCombinations,
+    refetchInterval: (query) => {
+      const data = query.state.data as VideoCombination[] | undefined;
+      return data?.some(c => c.status === 'processing') ? 2000 : false;
+    },
   });
+
+  const combinations = combinationsQuery.data || [];
+
+  // Show completion toast when all processing is done
+  const prevCombinationsRef = useRef<VideoCombination[]>([]);
+  useEffect(() => {
+    const wasProcessing = prevCombinationsRef.current.some(c => c.status === 'processing');
+    const isComplete = combinations.length > 0 && combinations.every(c => c.status === 'ready' || c.status === 'error');
+    
+    if (wasProcessing && isComplete) {
+      toast({
+        title: 'Processing complete',
+        description: 'All video combinations have been processed',
+      });
+    }
+    
+    prevCombinationsRef.current = combinations;
+  }, [combinations, toast]);
 
   const generateMutation = useMutation({
     mutationFn: generateCombinations,
