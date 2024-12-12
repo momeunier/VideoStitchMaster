@@ -39,24 +39,17 @@ export function VideoEditor({ segment, onClose, onSave }: VideoEditorProps) {
     const context = canvas.getContext('2d');
     if (!context) return;
 
-    // Wait for video metadata to load to get correct dimensions
+    let animationFrameId: number;
+
     const handleVideoLoad = () => {
       console.log('Video dimensions:', video.videoWidth, 'x', video.videoHeight);
-      // Match canvas size to video dimensions
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
     };
-    
-    video.addEventListener('loadedmetadata', handleVideoLoad);
-    if (video.readyState >= 2) {
-      handleVideoLoad();
-    }
 
     const render = () => {
-      // Clear canvas
       context.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Draw elements
       elements.forEach((element) => {
         context.save();
         context.translate(element.x, element.y);
@@ -72,20 +65,27 @@ export function VideoEditor({ segment, onClose, onSave }: VideoEditorProps) {
           context.textBaseline = 'middle';
           context.strokeText(element.content, 0, 0);
           context.fillText(element.content, 0, 0);
-        } else {
-          // Sticker implementation
-          const img = new Image();
-          img.src = element.content;
-          context.drawImage(img, -25, -25, 50, 50);
         }
 
         context.restore();
       });
 
-      requestAnimationFrame(render);
+      animationFrameId = requestAnimationFrame(render);
     };
 
+    video.addEventListener('loadedmetadata', handleVideoLoad);
+    if (video.readyState >= 2) {
+      handleVideoLoad();
+    }
+
     render();
+
+    return () => {
+      video.removeEventListener('loadedmetadata', handleVideoLoad);
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+    };
   }, [elements]);
 
   const addText = () => {
@@ -175,25 +175,26 @@ export function VideoEditor({ segment, onClose, onSave }: VideoEditorProps) {
 
   return (
     <Card className="p-4 space-y-4 max-w-4xl mx-auto">
-      <div className="relative bg-black max-h-[80vh] overflow-hidden">
-        <video
-          ref={videoRef}
-          className="w-auto h-full mx-auto"
-          style={{ maxHeight: '80vh' }}
-          src={segment.previewUrl}
-          controls
-          muted
-          playsInline
-        />
-        <canvas
-          ref={canvasRef}
-          className="absolute top-0 left-0 w-full h-full cursor-move"
-          style={{ touchAction: 'none' }}
-          onMouseDown={handleCanvasMouseDown}
-          onMouseMove={handleCanvasMouseMove}
-          onMouseUp={handleCanvasMouseUp}
-          onMouseLeave={handleCanvasMouseUp}
-        />
+      <div className="relative bg-black min-h-[90vh] flex items-center justify-center">
+        <div className="relative h-full" style={{ aspectRatio: '9/16' }}>
+          <video
+            ref={videoRef}
+            className="h-full w-full object-contain"
+            controls
+            muted
+            playsInline
+            src={segment.previewUrl}
+          />
+          <canvas
+            ref={canvasRef}
+            className="absolute top-0 left-0 w-full h-full cursor-move"
+            style={{ touchAction: 'none' }}
+            onMouseDown={handleCanvasMouseDown}
+            onMouseMove={handleCanvasMouseMove}
+            onMouseUp={handleCanvasMouseUp}
+            onMouseLeave={handleCanvasMouseUp}
+          />
+        </div>
       </div>
 
       <div className="space-y-4">

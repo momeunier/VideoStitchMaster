@@ -40,11 +40,11 @@ export function VideoPreview({ segment, onRemove }: VideoPreviewProps) {
     <Card className="relative overflow-hidden">
       <video
         ref={videoRef}
-        className="w-full aspect-video object-cover"
+        className="w-auto h-[320px] mx-auto"
+        style={{ aspectRatio: '9/16', objectFit: 'contain' }}
         controls
         muted
         playsInline
-        src={segment.previewUrl}
       />
       <div className="absolute top-2 right-2 flex gap-2">
         <Button
