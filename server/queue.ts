@@ -24,8 +24,13 @@ export class ProcessingQueue {
         console.log('[Queue] Processing next task');
         await task();
         console.log('[Queue] Task completed successfully');
+        // Add a small delay between tasks to ensure proper cleanup
+        await new Promise(resolve => setTimeout(resolve, 1000));
       } catch (error) {
         console.error('[Queue] Task processing error:', error);
+        // Continue processing next task even if current one fails
+      } finally {
+        console.log('[Queue] Task processing complete, moving to next task');
       }
     }
     

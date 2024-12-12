@@ -101,8 +101,15 @@ export function registerRoutes(app: Express): Server {
 
           processingQueue.add(async () => {
             const outputPath = path.join('public', 'combinations', `${combination.id}.mp4`);
+            const combinationIndex = combinations.findIndex(c => c.id === combination.id);
+            
+            if (combinationIndex === -1) {
+              console.error(`[Combinations] Combination ${combination.id} not found in the list`);
+              return;
+            }
+
             try {
-              console.log(`[Combinations] Starting to process combination ${combination.id}`);
+              console.log(`[Combinations] Starting to process combination ${combination.id} (${combinationIndex + 1}/${combinations.length})`);
               console.log(`[Combinations] Input segments:`, {
                 hook: hook.id,
                 story: story.id,
@@ -114,6 +121,10 @@ export function registerRoutes(app: Express): Server {
                 segments.find(s => s.id === story.id)!,
                 segments.find(s => s.id === cta.id)!
               ];
+
+              if (!selectedSegments.every(Boolean)) {
+                throw new Error('One or more required segments not found');
+              }
 
               // Log input files
               console.log(`[Combinations] Input files:`, selectedSegments.map(s => ({
@@ -130,42 +141,34 @@ export function registerRoutes(app: Express): Server {
               
               // Process the video combination
               console.log(`[Combinations] Starting FFmpeg processing for ${combination.id}`);
-              console.log('[Combinations] FFmpeg process starting with full output below:');
-              console.log('----------------------------------------');
-              try {
-                await processVideoCombination({
-                  inputFiles: selectedSegments.map(s => s.file),
-                  outputPath,
-                });
-                console.log('----------------------------------------');
+              console.log(`[Combinations] Output path: ${outputPath}`);
+              
+              await processVideoCombination({
+                inputFiles: selectedSegments.map(s => s.file),
+                outputPath,
+              });
 
-                // Verify output file exists and is not empty
-                const stats = fs.statSync(outputPath);
-                if (stats.size === 0) {
-                  throw new Error('Output file is empty');
-                }
-                
-                console.log(`[Combinations] Output file created: ${outputPath} (${stats.size} bytes)`);
-                combination.status = 'ready';
-                combination.downloadUrl = `/combinations/${path.basename(outputPath)}`;
-                console.log(`[Combinations] Successfully processed combination ${combination.id}`);
-              } catch (ffmpegError) {
-                console.error(`[Combinations] FFmpeg processing error:`, ffmpegError);
-                combination.status = 'error';
-                throw ffmpegError; // Re-throw to trigger cleanup
+              // Verify output file exists and is not empty
+              const stats = await fs.promises.stat(outputPath);
+              if (stats.size === 0) {
+                throw new Error('Output file is empty');
               }
+              
+              console.log(`[Combinations] Output file created: ${outputPath} (${stats.size} bytes)`);
+              combinations[combinationIndex].status = 'ready';
+              console.log(`[Combinations] Successfully processed combination ${combination.id}`);
             } catch (error) {
               console.error(`[Combinations] Error processing combination ${combination.id}:`, error);
-              combination.status = 'error';
+              combinations[combinationIndex].status = 'error';
               
               // Cleanup partial output
-              if (fs.existsSync(outputPath)) {
-                try {
-                  fs.unlinkSync(outputPath);
-                  console.log(`[Combinations] Cleaned up partial output file: ${outputPath}`);
-                } catch (cleanupError) {
-                  console.error(`[Combinations] Cleanup error:`, cleanupError);
-                }
+              try {
+                await fs.promises.unlink(outputPath).catch(() => {
+                  // Ignore error if file doesn't exist
+                });
+                console.log(`[Combinations] Cleaned up partial output file: ${outputPath}`);
+              } catch (cleanupError) {
+                console.error(`[Combinations] Cleanup error:`, cleanupError);
               }
             }
           });
