@@ -102,14 +102,17 @@ export function VideoEditor({ segment, onClose, onSave }: VideoEditorProps) {
     if (!canvas) return;
 
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
 
     // Find clicked element
     const element = elements.find((el) => {
       const dx = el.x - x;
       const dy = el.y - y;
-      return Math.sqrt(dx * dx + dy * dy) < 25;
+      return Math.sqrt(dx * dx + dy * dy) < 25 * Math.max(scaleX, scaleY);
     });
 
     if (element) {
@@ -125,8 +128,11 @@ export function VideoEditor({ segment, onClose, onSave }: VideoEditorProps) {
     if (!isDraggingRef.current || !selectedElement || !canvasRef.current) return;
 
     const rect = canvasRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const scaleX = canvasRef.current.width / rect.width;
+    const scaleY = canvasRef.current.height / rect.height;
+    
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
 
     const dx = x - lastPositionRef.current.x;
     const dy = y - lastPositionRef.current.y;
@@ -159,18 +165,20 @@ export function VideoEditor({ segment, onClose, onSave }: VideoEditorProps) {
   };
 
   return (
-    <Card className="p-4 space-y-4">
-      <div className="relative">
+    <Card className="p-4 space-y-4 max-w-4xl mx-auto">
+      <div className="relative bg-black">
         <video
           ref={videoRef}
-          className="w-full aspect-video"
+          className="w-full h-auto mx-auto"
+          style={{ aspectRatio: '9/16' }}
           src={segment.previewUrl}
           controls
           muted
         />
         <canvas
           ref={canvasRef}
-          className="absolute top-0 left-0 w-full h-full"
+          className="absolute top-0 left-0 w-full h-full cursor-move"
+          style={{ touchAction: 'none' }}
           onMouseDown={handleCanvasMouseDown}
           onMouseMove={handleCanvasMouseMove}
           onMouseUp={handleCanvasMouseUp}
