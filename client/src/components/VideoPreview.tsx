@@ -14,11 +14,8 @@ export function VideoPreview({ segment, onRemove }: VideoPreviewProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isEditing, setIsEditing] = useState(false);
 
-  useEffect(() => {
-    if (videoRef.current) {
-      videoRef.current.src = segment.previewUrl;
-    }
-  }, [segment.previewUrl]);
+  // Set video source directly in the video element
+  // This is more reliable than setting it via useEffect
 
   const handleSaveEdits = (edits: any) => {
     // TODO: Save edits to the video
@@ -38,14 +35,25 @@ export function VideoPreview({ segment, onRemove }: VideoPreviewProps) {
 
   return (
     <Card className="relative overflow-hidden">
-      <video
-        ref={videoRef}
-        className="w-auto h-[320px] mx-auto"
-        style={{ aspectRatio: '9/16', objectFit: 'contain' }}
-        controls
-        muted
-        playsInline
-      />
+      <div 
+        className="relative mx-auto" 
+        style={{ 
+          height: '320px',
+          width: 'calc(320px * 9/16)',
+          maxWidth: '100%',
+          aspectRatio: '9/16',
+          backgroundColor: 'black'
+        }}
+      >
+        <video
+          ref={videoRef}
+          className="absolute top-0 left-0 w-full h-full object-contain bg-black"
+          controls
+          muted
+          playsInline
+          src={segment.previewUrl}
+        />
+      </div>
       <div className="absolute top-2 right-2 flex gap-2">
         <Button
           variant="secondary"

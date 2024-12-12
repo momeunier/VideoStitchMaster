@@ -6,10 +6,27 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Serve static files
-app.use('/thumbnails', express.static('public/thumbnails'));
-app.use('/combinations', express.static('public/combinations'));
-app.use('/uploads', express.static('uploads'));
+// Serve static files with proper MIME types
+const staticOptions = {
+  setHeaders: (res: Response, path: string) => {
+    if (path.endsWith('.mp4')) {
+      res.set('Content-Type', 'video/mp4');
+    }
+  }
+};
+
+// Serve static files from various directories
+app.use('/thumbnails', express.static('public/thumbnails', staticOptions));
+app.use('/combinations', express.static('public/combinations', staticOptions));
+app.use('/uploads', express.static('uploads', staticOptions));
+
+// Log static file access
+app.use((req, res, next) => {
+  if (req.path.match(/\.(mp4|jpg|jpeg|png)$/)) {
+    console.log(`[Static] Serving: ${req.path}`);
+  }
+  next();
+});
 
 app.use((req, res, next) => {
   const start = Date.now();

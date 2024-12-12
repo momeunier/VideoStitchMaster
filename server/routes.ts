@@ -21,6 +21,9 @@ import fs from 'node:fs';
 ['uploads', 'public/thumbnails', 'public/combinations'].forEach(dir => {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
+    console.log(`[Server] Created directory: ${dir}`);
+  } else {
+    console.log(`[Server] Directory exists: ${dir}`);
   }
 });
 

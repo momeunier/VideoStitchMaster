@@ -175,11 +175,19 @@ export function VideoEditor({ segment, onClose, onSave }: VideoEditorProps) {
 
   return (
     <Card className="p-4 space-y-4 max-w-4xl mx-auto">
-      <div className="relative bg-black min-h-[90vh] flex items-center justify-center">
-        <div className="relative h-full" style={{ aspectRatio: '9/16' }}>
+      <div className="relative bg-black min-h-[90vh] flex items-center justify-center p-4">
+        <div 
+          className="relative"
+          style={{ 
+            height: '90vh',
+            width: 'calc(90vh * 9/16)',
+            maxWidth: '100%',
+            aspectRatio: '9/16'
+          }}
+        >
           <video
             ref={videoRef}
-            className="h-full w-full object-contain"
+            className="absolute top-0 left-0 w-full h-full object-contain bg-black"
             controls
             muted
             playsInline
