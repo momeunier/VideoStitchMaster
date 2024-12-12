@@ -20,22 +20,34 @@ export function VideoDropZone({ type, onUpload }: VideoDropZoneProps) {
     e.preventDefault();
     setIsDragging(false);
 
-    const file = e.dataTransfer.files[0];
-    if (!file.type.startsWith('video/')) {
+    const files = Array.from(e.dataTransfer.files);
+    const videoFiles = files.filter(file => file.type.startsWith('video/'));
+
+    if (videoFiles.length === 0) {
       toast({
         title: 'Invalid file type',
-        description: 'Please upload a video file',
+        description: 'Please upload video files',
         variant: 'destructive',
       });
       return;
     }
 
-    try {
-      const segment = await uploadVideo(file, type, (e) => {
-        setProgress((e.loaded / e.total) * 100);
+    if (files.length !== videoFiles.length) {
+      toast({
+        title: 'Some files skipped',
+        description: 'Only video files will be processed',
+        variant: 'warning',
       });
-      onUpload(segment);
-      setProgress(0);
+    }
+
+    try {
+      for (const file of videoFiles) {
+        const segment = await uploadVideo(file, type, (e) => {
+          setProgress((e.loaded / e.total) * 100);
+        });
+        onUpload(segment);
+        setProgress(0);
+      }
     } catch (error) {
       toast({
         title: 'Upload failed',

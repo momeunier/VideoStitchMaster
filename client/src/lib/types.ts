@@ -1,7 +1,9 @@
+export type VideoType = 'hook' | 'story' | 'cta';
+
 export interface VideoSegment {
   id: string;
   file: File;
-  type: 'hook' | 'story' | 'cta';
+  type: VideoType;
   previewUrl: string;
 }
 

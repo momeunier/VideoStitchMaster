@@ -10,10 +10,10 @@ import { useToast } from '@/hooks/use-toast';
 import { Wand2 } from 'lucide-react';
 
 export function Home() {
-  const [segments, setSegments] = useState<Record<VideoSegment['type'], VideoSegment | null>>({
-    hook: null,
-    story: null,
-    cta: null,
+  const [segments, setSegments] = useState<Record<VideoType, VideoSegment[]>>({
+    hook: [],
+    story: [],
+    cta: [],
   });
 
   const { toast } = useToast();
@@ -45,32 +45,34 @@ export function Home() {
   const handleUpload = (segment: VideoSegment) => {
     setSegments((prev) => ({
       ...prev,
-      [segment.type]: segment,
+      [segment.type]: [...prev[segment.type], segment],
     }));
   };
 
-  const handleRemove = (type: VideoSegment['type']) => {
+  const handleRemove = (type: VideoType, id: string) => {
     setSegments((prev) => ({
       ...prev,
-      [type]: null,
+      [type]: prev[type].filter(segment => segment.id !== id),
     }));
   };
 
-  const canGenerate = Object.values(segments).every(Boolean);
+  const canGenerate = Object.values(segments).every(typeSegments => typeSegments.length > 0);
 
   return (
     <div className="container mx-auto py-8 space-y-8">
       <div className="grid gap-6 md:grid-cols-3">
         {(['hook', 'story', 'cta'] as const).map((type) => (
           <div key={type}>
-            {segments[type] ? (
-              <VideoPreview
-                segment={segments[type]!}
-                onRemove={() => handleRemove(type)}
-              />
-            ) : (
+            <div className="space-y-4">
               <VideoDropZone type={type} onUpload={handleUpload} />
-            )}
+              {segments[type].map((segment) => (
+                <VideoPreview
+                  key={segment.id}
+                  segment={segment}
+                  onRemove={() => handleRemove(type, segment.id)}
+                />
+              ))}
+            </div>
           </div>
         ))}
       </div>
