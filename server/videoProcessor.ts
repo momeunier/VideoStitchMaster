@@ -76,12 +76,23 @@ export async function processVideoCombination({ inputFiles, outputPath }: Proces
     ffmpeg.on('close', (code) => {
       clearTimeout(timeout);
       if (code === 0) {
-        console.log('[FFmpeg] Successfully processed video combination');
-        resolve(outputPath);
+        // Verify the output file exists and has content
+        fs.stat(outputPath, (err, stats) => {
+          if (err) {
+            console.error('[FFmpeg] Error checking output file:', err);
+            reject(new Error(`Failed to verify output file: ${err.message}`));
+          } else if (stats.size === 0) {
+            console.error('[FFmpeg] Output file is empty');
+            reject(new Error('FFmpeg generated an empty output file'));
+          } else {
+            console.log(`[FFmpeg] Successfully processed video combination (${stats.size} bytes)`);
+            resolve(outputPath);
+          }
+        });
       } else {
         console.error('[FFmpeg] Process failed with code:', code);
         console.error('[FFmpeg] Error output:', stdErrOutput);
-        reject(new Error(`FFmpeg process failed with code ${code}`));
+        reject(new Error(`FFmpeg process failed with code ${code}\n${stdErrOutput}`));
       }
     });
   });

@@ -130,21 +130,27 @@ export function registerRoutes(app: Express): Server {
               console.log(`[Combinations] Starting FFmpeg processing for ${combination.id}`);
               console.log('[Combinations] FFmpeg process starting with full output below:');
               console.log('----------------------------------------');
-              await processVideoCombination({
-                inputFiles: selectedSegments.map(s => s.file),
-                outputPath,
-              });
-              console.log('----------------------------------------');
+              try {
+                await processVideoCombination({
+                  inputFiles: selectedSegments.map(s => s.file),
+                  outputPath,
+                });
+                console.log('----------------------------------------');
 
-              // Verify output and update status
-              if (fs.existsSync(outputPath)) {
+                // Verify output file exists and is not empty
                 const stats = fs.statSync(outputPath);
+                if (stats.size === 0) {
+                  throw new Error('Output file is empty');
+                }
+                
                 console.log(`[Combinations] Output file created: ${outputPath} (${stats.size} bytes)`);
                 combination.status = 'ready';
                 combination.downloadUrl = `/combinations/${path.basename(outputPath)}`;
                 console.log(`[Combinations] Successfully processed combination ${combination.id}`);
-              } else {
-                throw new Error('Output file was not created after processing');
+              } catch (ffmpegError) {
+                console.error(`[Combinations] FFmpeg processing error:`, ffmpegError);
+                combination.status = 'error';
+                throw ffmpegError; // Re-throw to trigger cleanup
               }
             } catch (error) {
               console.error(`[Combinations] Error processing combination ${combination.id}:`, error);
