@@ -98,20 +98,33 @@ export function registerRoutes(app: Express): Server {
           console.log(`[Combinations] Created combination ${combination.id}`);
 
           processingQueue.add(async () => {
+            const outputPath = path.join('public', 'combinations', `${combination.id}.mp4`);
             try {
               console.log(`[Combinations] Processing combination ${combination.id}`);
-              const outputPath = path.join('public', 'combinations', `${combination.id}.mp4`);
               
               const selectedSegments = [
                 segments.find(s => s.id === hook.id)!,
                 segments.find(s => s.id === story.id)!,
                 segments.find(s => s.id === cta.id)!
               ];
+
+              // Verify all input files exist
+              for (const segment of selectedSegments) {
+                if (!fs.existsSync(segment.file)) {
+                  throw new Error(`Input file not found: ${segment.file}`);
+                }
+              }
               
+              // Process the video combination
               await processVideoCombination({
                 inputFiles: selectedSegments.map(s => s.file),
                 outputPath,
               });
+
+              // Verify the output file was created
+              if (!fs.existsSync(outputPath)) {
+                throw new Error('Output file was not created');
+              }
 
               combination.status = 'ready';
               combination.downloadUrl = `/combinations/${path.basename(outputPath)}`;
@@ -119,6 +132,15 @@ export function registerRoutes(app: Express): Server {
             } catch (error) {
               console.error(`[Combinations] Error processing combination ${combination.id}:`, error);
               combination.status = 'error';
+              
+              // Cleanup: remove partial output file if it exists
+              if (fs.existsSync(outputPath)) {
+                try {
+                  fs.unlinkSync(outputPath);
+                } catch (cleanupError) {
+                  console.error(`[Combinations] Cleanup error:`, cleanupError);
+                }
+              }
             }
           });
         }
