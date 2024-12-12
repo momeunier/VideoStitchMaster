@@ -100,7 +100,12 @@ export function registerRoutes(app: Express): Server {
           processingQueue.add(async () => {
             const outputPath = path.join('public', 'combinations', `${combination.id}.mp4`);
             try {
-              console.log(`[Combinations] Processing combination ${combination.id}`);
+              console.log(`[Combinations] Starting to process combination ${combination.id}`);
+              console.log(`[Combinations] Input segments:`, {
+                hook: hook.id,
+                story: story.id,
+                cta: cta.id
+              });
               
               const selectedSegments = [
                 segments.find(s => s.id === hook.id)!,
@@ -108,35 +113,45 @@ export function registerRoutes(app: Express): Server {
                 segments.find(s => s.id === cta.id)!
               ];
 
-              // Verify all input files exist
-              for (const segment of selectedSegments) {
-                if (!fs.existsSync(segment.file)) {
-                  throw new Error(`Input file not found: ${segment.file}`);
-                }
+              // Log input files
+              console.log(`[Combinations] Input files:`, selectedSegments.map(s => ({
+                id: s.id,
+                type: s.type,
+                file: s.file
+              })));
+
+              // Create output directory if it doesn't exist
+              const outputDir = path.dirname(outputPath);
+              if (!fs.existsSync(outputDir)) {
+                fs.mkdirSync(outputDir, { recursive: true });
               }
               
               // Process the video combination
+              console.log(`[Combinations] Starting FFmpeg processing for ${combination.id}`);
               await processVideoCombination({
                 inputFiles: selectedSegments.map(s => s.file),
                 outputPath,
               });
 
-              // Verify the output file was created
-              if (!fs.existsSync(outputPath)) {
-                throw new Error('Output file was not created');
+              // Verify output and update status
+              if (fs.existsSync(outputPath)) {
+                const stats = fs.statSync(outputPath);
+                console.log(`[Combinations] Output file created: ${outputPath} (${stats.size} bytes)`);
+                combination.status = 'ready';
+                combination.downloadUrl = `/combinations/${path.basename(outputPath)}`;
+                console.log(`[Combinations] Successfully processed combination ${combination.id}`);
+              } else {
+                throw new Error('Output file was not created after processing');
               }
-
-              combination.status = 'ready';
-              combination.downloadUrl = `/combinations/${path.basename(outputPath)}`;
-              console.log(`[Combinations] Successfully processed combination ${combination.id}`);
             } catch (error) {
               console.error(`[Combinations] Error processing combination ${combination.id}:`, error);
               combination.status = 'error';
               
-              // Cleanup: remove partial output file if it exists
+              // Cleanup partial output
               if (fs.existsSync(outputPath)) {
                 try {
                   fs.unlinkSync(outputPath);
+                  console.log(`[Combinations] Cleaned up partial output file: ${outputPath}`);
                 } catch (cleanupError) {
                   console.error(`[Combinations] Cleanup error:`, cleanupError);
                 }

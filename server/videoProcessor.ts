@@ -9,15 +9,28 @@ interface ProcessVideoOptions {
 }
 
 export async function processVideoCombination({ inputFiles, outputPath }: ProcessVideoOptions): Promise<string> {
+  // Verify input files exist and are accessible
+  for (const file of inputFiles) {
+    try {
+      await fs.access(file, fs.constants.R_OK);
+      const stats = await fs.stat(file);
+      console.log(`[FFmpeg] Input file verified: ${file} (${stats.size} bytes)`);
+    } catch (error) {
+      throw new Error(`Unable to access input file ${file}: ${error.message}`);
+    }
+  }
+
   // Create filter complex string with explicit input stream labels
   const inputLabels = inputFiles.map((_, i) => `[${i}:v][${i}:a]`).join('');
   const concatFilter = `${inputLabels}concat=n=${inputFiles.length}:v=1:a=1[outv][outa]`;
+  
+  console.log(`[FFmpeg] Starting processing with filter: ${concatFilter}`);
 
   return new Promise((resolve, reject) => {
     let stdErrOutput = '';
-    const ffmpeg = spawn('ffmpeg', [
-      // Input files
-      ...inputFiles.flatMap(file => ['-i', file]),
+    const ffmpegArgs = [
+      // Input files with absolute paths
+      ...inputFiles.flatMap(file => ['-i', path.resolve(file)]),
       // Filter complex for concatenation
       '-filter_complex', concatFilter,
       // Map output streams
@@ -25,15 +38,18 @@ export async function processVideoCombination({ inputFiles, outputPath }: Proces
       '-map', '[outa]',
       // Video codec settings
       '-c:v', 'libx264',
-      '-preset', 'medium',
+      '-preset', 'ultrafast', // Speed up encoding for testing
       '-crf', '23',
       // Audio codec settings
       '-c:a', 'aac',
       '-b:a', '128k',
       // Output file
       '-y',
-      outputPath
-    ]);
+      path.resolve(outputPath)
+    ];
+
+    console.log(`[FFmpeg] Executing command: ffmpeg ${ffmpegArgs.join(' ')}`);
+    const ffmpeg = spawn('ffmpeg', ffmpegArgs);
 
     ffmpeg.stderr.on('data', (data) => {
       stdErrOutput += data.toString();
