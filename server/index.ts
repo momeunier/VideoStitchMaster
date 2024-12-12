@@ -59,30 +59,8 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  const server = registerRoutes(app);
+  let serverInstance: Server | null = null;
 
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-
-    res.status(status).json({ message });
-    throw err;
-  });
-
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
-  if (app.get("env") === "development") {
-    await setupVite(app, server);
-  } else {
-    serveStatic(app);
-  }
-
-  // ALWAYS serve the app on port 5000
-  // this serves both the API and the client
-  const PORT = 5000;
-  let serverInstance = server;
-  
   // Cleanup function to ensure proper shutdown
   const cleanup = () => {
     log('Shutting down server...');
@@ -102,24 +80,58 @@ app.use((req, res, next) => {
     }
   };
 
-  // Register cleanup handlers
-  process.on('SIGTERM', cleanup);
-  process.on('SIGINT', cleanup);
+  // Handle unhandled rejections
+  process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+    cleanup();
+  });
+
+  // Handle uncaught exceptions
   process.on('uncaughtException', (err) => {
     console.error('Uncaught Exception:', err);
     cleanup();
   });
 
-  // Start the server
-  serverInstance.listen(PORT, "0.0.0.0", () => {
-    log(`serving on port ${PORT}`);
-  }).on('error', (error: any) => {
-    if (error.code === 'EADDRINUSE') {
-      console.error(`Port ${PORT} is already in use`);
-      cleanup();
+  // Register cleanup handlers
+  process.on('SIGTERM', cleanup);
+  process.on('SIGINT', cleanup);
+
+  try {
+    // Register routes and create server instance
+    serverInstance = registerRoutes(app);
+
+    // Error handling middleware
+    app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+      const status = err.status || err.statusCode || 500;
+      const message = err.message || "Internal Server Error";
+      res.status(status).json({ message });
+      console.error('Error middleware:', err);
+    });
+
+    // Setup Vite or static serving
+    if (app.get("env") === "development") {
+      await setupVite(app, serverInstance);
     } else {
-      console.error('Server error:', error);
-      cleanup();
+      serveStatic(app);
     }
-  });
+
+    // ALWAYS serve the app on port 5000
+    const PORT = 5000;
+    
+    // Start the server
+    serverInstance.listen(PORT, "0.0.0.0", () => {
+      log(`serving on port ${PORT}`);
+    }).on('error', (error: any) => {
+      if (error.code === 'EADDRINUSE') {
+        console.error(`Port ${PORT} is already in use`);
+        cleanup();
+      } else {
+        console.error('Server error:', error);
+        cleanup();
+      }
+    });
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    cleanup();
+  }
 })();
