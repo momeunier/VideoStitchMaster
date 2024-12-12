@@ -52,12 +52,14 @@ export async function processVideoCombination({ inputFiles, outputPath }: Proces
     const ffmpeg = spawn('ffmpeg', ffmpegArgs);
 
     ffmpeg.stderr.on('data', (data) => {
-      stdErrOutput += data.toString();
-      console.log(`[FFmpeg Processing] ${data}`);
+      const output = data.toString();
+      stdErrOutput += output;
+      process.stdout.write(`[FFmpeg Processing] ${output}`);
     });
 
     ffmpeg.stdout.on('data', (data) => {
-      console.log(`[FFmpeg Output] ${data}`);
+      const output = data.toString();
+      process.stdout.write(`[FFmpeg Output] ${output}`);
     });
 
     ffmpeg.on('error', (err) => {

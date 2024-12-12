@@ -128,10 +128,13 @@ export function registerRoutes(app: Express): Server {
               
               // Process the video combination
               console.log(`[Combinations] Starting FFmpeg processing for ${combination.id}`);
+              console.log('[Combinations] FFmpeg process starting with full output below:');
+              console.log('----------------------------------------');
               await processVideoCombination({
                 inputFiles: selectedSegments.map(s => s.file),
                 outputPath,
               });
+              console.log('----------------------------------------');
 
               // Verify output and update status
               if (fs.existsSync(outputPath)) {
