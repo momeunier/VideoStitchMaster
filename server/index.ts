@@ -6,6 +6,11 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// Serve static files
+app.use('/thumbnails', express.static('public/thumbnails'));
+app.use('/combinations', express.static('public/combinations'));
+app.use('/uploads', express.static('uploads'));
+
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;

@@ -16,6 +16,14 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
+// Ensure directories exist
+import fs from 'node:fs';
+['uploads', 'public/thumbnails', 'public/combinations'].forEach(dir => {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+});
+
 interface VideoSegment {
   id: string;
   file: string;
