@@ -16,15 +16,37 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-// Ensure directories exist
+// Ensure directories exist and clean them up
 import fs from 'node:fs';
-['uploads', 'public/thumbnails', 'public/combinations'].forEach(dir => {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-    console.log(`[Server] Created directory: ${dir}`);
-  } else {
-    console.log(`[Server] Directory exists: ${dir}`);
+
+async function setupDirectories() {
+  const dirs = ['uploads', 'public/thumbnails', 'public/combinations'];
+  
+  for (const dir of dirs) {
+    try {
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+        console.log(`[Server] Created directory: ${dir}`);
+      } else {
+        // Clean up existing files
+        const files = fs.readdirSync(dir);
+        for (const file of files) {
+          const filePath = path.join(dir, file);
+          fs.unlinkSync(filePath);
+        }
+        console.log(`[Server] Cleaned up directory: ${dir}`);
+      }
+    } catch (error) {
+      console.error(`[Server] Error setting up directory ${dir}:`, error);
+      throw error;
+    }
   }
+}
+
+// Initialize directories
+setupDirectories().catch(error => {
+  console.error('[Server] Failed to setup directories:', error);
+  process.exit(1);
 });
 
 interface VideoSegment {
