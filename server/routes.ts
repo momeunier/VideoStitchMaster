@@ -52,7 +52,9 @@ export function registerRoutes(app: Express): Server {
     }
 
     try {
+      console.log(`[Upload] Processing video file: ${req.file.path}`);
       const thumbnail = await generateThumbnail(req.file.path);
+      console.log(`[Upload] Generated thumbnail: ${thumbnail}`);
       
       const segment: VideoSegment = {
         id: randomUUID(),
@@ -61,9 +63,11 @@ export function registerRoutes(app: Express): Server {
         previewUrl: `/thumbnails/${path.basename(thumbnail)}`,
       };
 
+      console.log(`[Upload] Created segment with preview URL: ${segment.previewUrl}`);
       segments.push(segment);
       res.json(segment);
     } catch (error) {
+      console.error('[Upload] Error:', error);
       res.status(500).json({ message: 'Failed to process video' });
     }
   });

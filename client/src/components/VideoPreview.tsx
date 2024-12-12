@@ -25,6 +25,8 @@ export function VideoPreview({ segment, onRemove }: VideoPreviewProps) {
         className="w-full aspect-video object-cover"
         controls
         muted
+        playsInline
+        src={segment.previewUrl}
       />
       <Button
         variant="destructive"

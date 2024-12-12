@@ -27,7 +27,11 @@ export async function processVideoCombination({ inputFiles, outputPath }: Proces
     ]);
 
     ffmpeg.stderr.on('data', (data) => {
-      console.log(`ffmpeg: ${data}`);
+      console.log(`[FFmpeg Processing] ${data}`);
+    });
+
+    ffmpeg.stdout.on('data', (data) => {
+      console.log(`[FFmpeg Output] ${data}`);
     });
 
     ffmpeg.on('close', (code) => {
