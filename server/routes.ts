@@ -163,7 +163,7 @@ export function registerRoutes(app: Express): Server {
               
               // Cleanup partial output
               try {
-                await fs.promises.unlink(outputPath).catch(() => {
+                await fs.unlink(outputPath).catch(() => {
                   // Ignore error if file doesn't exist
                 });
                 console.log(`[Combinations] Cleaned up partial output file: ${outputPath}`);

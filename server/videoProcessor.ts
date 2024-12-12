@@ -98,7 +98,7 @@ export async function processVideoCombination({ inputFiles, outputPath }: Proces
       if (code === 0) {
         try {
           // Verify the output file exists and has content
-          const stats = await fs.promises.stat(outputPath);
+          const stats = await fs.stat(outputPath);
           if (stats.size === 0) {
             console.error('[FFmpeg] Output file is empty');
             reject(new Error('FFmpeg generated an empty output file'));
